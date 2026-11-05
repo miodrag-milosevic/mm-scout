@@ -1,0 +1,28 @@
+MM Scout
+© 2026 Miodrag Milosevic. Tutti i diritti riservati.
+
+VERSIONE BETA, NON COMMERCIALE: l'app è in fase di prova ed è destinata
+all'uso personale dell'autore e ai tester da lui invitati. Non è in vendita.
+I tester possono usarla solo per provarla: non possono copiarla,
+modificarla, distribuirla o passarla ad altri.
+
+MM Scout (nome, logo, codice sorgente, testi, grafica e struttura) è un'opera
+originale di Miodrag Milosevic.
+
+Senza il consenso scritto dell'autore è vietato:
+- copiare l'app, in tutto o in parte;
+- modificarla o crearne versioni derivate;
+- distribuirla, pubblicarla, venderla o metterla a disposizione di terzi;
+- divulgare i dati contenuti nell'archivio dell'autore.
+
+I dati inseriti nell'app appartengono a chi li inserisce e restano cifrati sul
+suo dispositivo. I report condivisi sono riservati e non possono essere
+inoltrati, pubblicati o modificati senza il consenso di chi li ha scritti.
+
+Contatto per permessi e collaborazioni:
+https://www.linkedin.com/in/miodragmilosevic/
+
+Componenti di terze parti inclusi (restano sotto la loro licenza):
+- QR Code Generator for JavaScript — © 2009 Kazuhiko Arase — licenza MIT.
+- PDF.js — © Mozilla Foundation — Apache License 2.0 (vedi js/vendor/pdfjs/LICENSE.txt).
+Tutto il resto (codice, testi, struttura, grafica e logo) è opera originale di Miodrag Milosevic.
