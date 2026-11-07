@@ -330,13 +330,13 @@ function render(keepScroll) {
   const fn = R[ui.view] || R.panoramica; $("#view").innerHTML = fn(); bindView(); afterRender();
   if (keepScroll) window.scrollTo(0, y); else { const v = $("#view"); v.classList.remove("enter"); void v.offsetWidth; v.classList.add("enter"); }
 }
-function go(view, extra = {}) { ui.view = view; Object.assign(ui, extra); if (location.hash !== "#" + view) history.replaceState(null, "", "#" + view); render(); window.scrollTo(0, 0); }
+function go(view, extra = {}) { ui.view = view; Object.assign(ui, extra); if (location.hash !== "#" + view) history.replaceState(history.state, "", "#" + view); render(); window.scrollTo(0, 0); }
 function resetSub() { ui.playerId = null; ui.pdraft = null; ui.edraft = null; ui.matchId = null; }
 document.addEventListener("click", e => {
   const a = e.target.closest(".nav a,.mbar a"); if (!a) return; e.preventDefault();
   const h = a.getAttribute("href").slice(1); resetSub(); closeSheet(); go(h);
 });
-window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (App.unlocked && views().some(v => v[0] === h)) { resetSub(); go(h); } });
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (h === ui.view) return; if (App.unlocked && views().some(v => v[0] === h)) { resetSub(); go(h); } });
 const R = {};
 // dopo il disegno: carica le miniature cifrate
 async function afterRender() { if (window.bindSigPad) bindSigPad(); if (window.fillSignBoxes) fillSignBoxes(); if (window.bindLive) bindLive(); for (const el of $$("[data-blob]")) { const id = el.dataset.blob; el.removeAttribute("data-blob"); try { const u = await Store.blobURL(id); if (u) { if (el.tagName === "IMG" || el.tagName === "VIDEO" || el.tagName === "AUDIO") el.src = u; else if (el.tagName === "IFRAME") el.src = u; } } catch (e) { } } }

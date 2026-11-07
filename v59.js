@@ -17,17 +17,35 @@ const NAVH = { stack: [], i: -1, moving: false };
 const navLoc = () => (ui.edraft || ui.pdraft || !App.unlocked) ? null : { v: ui.view, p: ui.playerId || null, pt: ui.ptab, m: ui.matchId || null, mt: ui.mtab, l: ui.listId || null, id: ui.idealId || null, me: ui.meetId || null, tg: ui.tagSel || null, q: ui.view === "cerca" ? (ui.q || "") : "" };
 const navKey = L => [L.v, L.p, L.m, L.l, L.id, L.me, L.tg, L.q].join("|");
 function navArrowBtns() { const b = $("#navBack"), f = $("#navFwd"); const busy = !!(ui.edraft || ui.pdraft); if (b) b.disabled = busy || NAVH.i <= 0; if (f) f.disabled = busy || NAVH.i >= NAVH.stack.length - 1; }
+let NAVN = 0;
+const navLocUi = L => { Object.assign(ui, { playerId: L.p, ptab: L.pt || ui.ptab, matchId: L.m, mtab: L.mt || ui.mtab, listId: L.l, idealId: L.id, meetId: L.me, tagSel: L.tg }); if (L.v === "cerca") { ui.q = L.q; const g = $("#gq"); if (g) g.value = L.q; } };
 function navRecord() {
   const L = navLoc(); if (!L) { navArrowBtns(); return; }
-  if (NAVH.moving) { NAVH.moving = false; if (NAVH.stack[NAVH.i]) NAVH.stack[NAVH.i] = L; navArrowBtns(); return; }
-  const cur = NAVH.stack[NAVH.i]; if (cur && navKey(cur) === navKey(L)) NAVH.stack[NAVH.i] = L; else { NAVH.stack = NAVH.stack.slice(0, NAVH.i + 1); NAVH.stack.push(L); if (NAVH.stack.length > 60) NAVH.stack.shift(); NAVH.i = NAVH.stack.length - 1; }
-  navArrowBtns();
+  if (NAVH.moving) { NAVH.moving = false; const o = NAVH.stack[NAVH.i]; if (o) { L.n = o.n; NAVH.stack[NAVH.i] = L; } navArrowBtns(); try { Session.save(L); } catch (e) { } return; }
+  const cur = NAVH.stack[NAVH.i];
+  if (cur && navKey(cur) === navKey(L)) { L.n = cur.n; NAVH.stack[NAVH.i] = L; try { history.replaceState({ mm: 1, n: L.n }, "", "#" + L.v); } catch (e) { } }
+  else {
+    L.n = ++NAVN; const first = !cur;
+    NAVH.stack = NAVH.stack.slice(0, NAVH.i + 1); NAVH.stack.push(L); if (NAVH.stack.length > 60) NAVH.stack.shift(); NAVH.i = NAVH.stack.length - 1;
+    try {
+      if (first) history.replaceState({ mm: 1, n: L.n }, "", "#" + L.v);
+      else { history.replaceState({ mm: 1, n: cur.n }, "", "#" + cur.v); history.pushState({ mm: 1, n: L.n }, "", "#" + L.v); }
+    } catch (e) { }
+  }
+  navArrowBtns(); try { Session.save(L); } catch (e) { }
 }
+// il tasto indietro/avanti del browser naviga dentro l'app
+window.addEventListener("popstate", e => {
+  if (!App.unlocked) return;
+  const st = e.state; const j = st && st.mm ? NAVH.stack.findIndex(x => x.n === st.n) : -1;
+  if (ui.edraft || ui.pdraft) { toast(t("Salva o annulla prima la modifica in corso.")); const c = NAVH.stack[NAVH.i]; if (c) { try { history.pushState({ mm: 1, n: c.n }, "", "#" + c.v); } catch (x) { } } return; }
+  if (j >= 0) { const L = NAVH.stack[j]; NAVH.i = j; NAVH.moving = true; closeSheet(); navLocUi(L); go(L.v); return; }
+  const h = location.hash.slice(1); if (h !== ui.view && views().some(v => v[0] === h)) { resetSub(); go(h); }
+});
+{ const rs = history.replaceState.bind(history); history.replaceState = function (s, t2, u) { return rs(s == null ? history.state : s, t2, u); }; }
 function navGo(d) {
   if (ui.edraft || ui.pdraft) { toast(t("Salva o annulla prima la modifica in corso.")); return; }
-  const j = NAVH.i + d; const L = NAVH.stack[j]; if (!L) return; NAVH.i = j; NAVH.moving = true; closeSheet();
-  Object.assign(ui, { playerId: L.p, ptab: L.pt || ui.ptab, matchId: L.m, mtab: L.mt || ui.mtab, listId: L.l, idealId: L.id, meetId: L.me, tagSel: L.tg }); if (L.v === "cerca") { ui.q = L.q; const g = $("#gq"); if (g) g.value = L.q; }
-  go(L.v);
+  const j = NAVH.i + d; if (!NAVH.stack[j]) return; history.go(d);
 }
 A.navBack = () => navGo(-1); A.navFwd = () => navGo(1);
 window.render = (orig => function () { const r = orig.apply(this, arguments); try { navRecord(); } catch (e) { } return r; })(window.render);
@@ -42,9 +60,20 @@ document.addEventListener("keydown", e => { if (!App.unlocked || !e.altKey || e.
 /* ---------- dopo l'accesso si parte sempre dalla Panoramica ---------- */
 Lock.enter = (orig => async function () {
   const r = await orig.apply(this, arguments);
-  try { if (App.unlocked) { resetSub(); Object.assign(ui, { listId: null, idealId: null, meetId: null, tagSel: null, q: "", view: "panoramica" }); NAVH.stack = []; NAVH.i = -1; closeSheet(); history.replaceState(null, "", "#panoramica"); render(); window.scrollTo(0, 0); } } catch (e) { }
+  try {
+    if (App.unlocked) {
+      const boot = window.__bootNav, rl = window.__resumeLoc; window.__bootNav = false; window.__resumeLoc = null;
+      resetSub(); closeSheet(); NAVH.stack = []; NAVH.i = -1;
+      if (rl && views().some(v => v[0] === rl.v)) { Object.assign(ui, { view: rl.v, q: rl.q || "" }); navLocUi(rl); }
+      else if (boot) Object.assign(ui, { listId: null, idealId: null, meetId: null, tagSel: null, q: "" });
+      else Object.assign(ui, { listId: null, idealId: null, meetId: null, tagSel: null, q: "", view: "panoramica" });
+      history.replaceState(history.state, "", "#" + ui.view); render(); window.scrollTo(0, 0);
+      Session.save();
+    }
+  } catch (e) { }
   return r;
 })(Lock.enter);
+Store.lock = (orig => function () { try { Session.clear(); } catch (e) { } return orig.apply(this, arguments); })(Store.lock);
 
 /* ---------- nuovi tag direttamente nei moduli (partita, valutazione…) ---------- */
 function enhanceTagChips(root) {

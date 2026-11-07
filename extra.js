@@ -718,6 +718,42 @@ const A = {
 };
 document.addEventListener("click", e => { const el = e.target.closest("[data-a]"); if (!el) return; const a = el.dataset.a; if (a === "closeSheet" && e.target !== el) return; const fn = A[a]; if (fn) { if (el.tagName === "A" && a !== "menuGo") { } fn(el, e); } });
 
+
+/* =========================================================
+   SESSIONE (6.0) — il refresh non riporta al Login
+   La chiave resta solo in sessionStorage (scheda corrente), scade con l'inattività.
+   ========================================================= */
+const Session = {
+  K: "mm_sess",
+  save(loc) {
+    try {
+      if (!App.unlocked || !Store.raw || !Accounts.acc) return;
+      if (App.cfgDevice().lockOnHide) { this.clear(); return; }
+      const old = this.read() || {};
+      sessionStorage.setItem(this.K, JSON.stringify({ id: Accounts.acc.id, k: C.b64(Store.raw), t: Date.now(), loc: loc || old.loc || null }));
+    } catch (e) { }
+  },
+  read() { try { return JSON.parse(sessionStorage.getItem(this.K) || "null"); } catch (e) { return null; } },
+  clear() { try { sessionStorage.removeItem(this.K); } catch (e) { } },
+  tick() { if (!App.unlocked) return; const now = Date.now(); if (now - (this._t || 0) < 15000) return; this._t = now; const s = this.read(); if (s) { s.t = now; try { sessionStorage.setItem(this.K, JSON.stringify(s)); } catch (e) { } } },
+  async resume() {
+    const s = this.read(); if (!s) return false;
+    try {
+      const min = App.cfgDevice().autoLockMin; const lim = min > 0 ? min * 60000 : 12 * 3600000;
+      if (App.cfgDevice().lockOnHide || Date.now() - s.t > lim) { this.clear(); return false; }
+      const acc = Accounts.list().find(a => a.id === s.id); if (!acc) { this.clear(); return false; }
+      await Store.open(acc.db);
+      const raw = C.unb64(s.k); await Store.useRaw(raw); raw.fill(0);
+      Accounts.acc = acc; Prefs.set("lastEmail", acc.email || "");
+      window.__resumeLoc = s.loc || null;
+      await Lock.enter();
+      return App.unlocked === true;
+    } catch (e) { try { Store.lock(); } catch (x) { } this.clear(); return false; }
+  }
+};
+document.addEventListener("pointerdown", () => Session.tick(), { passive: true });
+document.addEventListener("keydown", () => Session.tick(), { passive: true });
+
 /* =========================================================
    AVVIO
    ========================================================= */
@@ -728,6 +764,7 @@ document.addEventListener("click", e => { const el = e.target.closest("[data-a]"
   const h = location.hash; if (h.startsWith("#s=")) { if (await LinkViewer.show(h.slice(3))) return; }
   if (!window.crypto || !crypto.subtle || !window.indexedDB) { document.body.innerHTML = `<div class="lock"><div class="lockbox"><h2>${t("Browser non supportato")}</h2><p>${t("Serve una versione recente di Safari, Chrome, Brave, Firefox o Edge. Se hai aperto il file direttamente, prova a pubblicarlo su GitHub Pages.")}</p></div></div>`; return; }
   try { await Accounts.init(); } catch (e) { document.body.innerHTML = `<div class="lock"><div class="lockbox"><h2>${t("Archivio non disponibile")}</h2><p>${t("Il browser non permette di salvare dati (finestra privata?). Apri l'app in una finestra normale.")}</p></div></div>`; return; }
-  { const v = location.hash.slice(1); if (views().some(x => x[0] === v)) ui.view = v; else if (v.startsWith("match-")) { ui.view = "partite"; ui.matchId = v.slice(6); ui.mtab = "prima"; } else if (v.startsWith("player-")) { ui.view = "giocatori"; ui.playerId = v.slice(7); } }
+  { const v = location.hash.slice(1); if (views().some(x => x[0] === v)) ui.view = v; else if (v.startsWith("match-")) { ui.view = "partite"; ui.matchId = v.slice(6); ui.mtab = "prima"; } else if (v.startsWith("player-")) { ui.view = "giocatori"; ui.playerId = v.slice(7); } window.__bootNav = ui.view !== "panoramica" || v === "panoramica"; }
+  if (await Session.resume()) return;
   Lock.show();
 })();
