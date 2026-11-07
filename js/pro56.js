@@ -256,5 +256,5 @@ window.addEventListener("load", () => setTimeout(() => { try { const r = $("#loc
 /* 5.6.1 — dal menu si torna sempre alla pagina principale (anche Liste, Profili ideali, Staff) */
 const clearMain = () => { ui.listId = null; ui.idealId = null; ui.idraft = null; ui.meetId = null; };
 document.addEventListener("click", e => { if (e.target.closest(".nav a,.mbar a,[data-a=\"menuGo\"]")) clearMain(); }, true);
-window.addEventListener("hashchange", clearMain, true);
+window.addEventListener("hashchange", () => { if (location.hash.slice(1) === ui.view) return; clearMain(); }, true);
 A.menuGo = (orig => (el, e) => { clearMain(); orig(el, e); })(A.menuGo);
