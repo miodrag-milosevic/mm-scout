@@ -72,7 +72,7 @@ R.partite = () => {
 };
 function tGet(id) { try { return JSON.parse(localStorage.getItem("ts3_tmr_" + id)) || { run: false, start: 0, base: 0, half: 1 }; } catch (e) { return { run: false, start: 0, base: 0, half: 1 }; } }
 function tSet(id, tm) { try { localStorage.setItem("ts3_tmr_" + id, JSON.stringify(tm)); } catch (e) { } ui.timer = tm; }
-const tSec = tm => tm.base + (tm.run ? Math.floor((Date.now() - tm.start) / 1000) : 0);
+const tSec = tm => { const raw = tm.base + (tm.run ? Math.floor((Date.now() - tm.start) / 1000) : 0); return window.CL && tm.run ? CL.limit(tm, raw) : raw; };
 const minuteOf = tm => Math.floor(tSec(tm) / 60) + 1;
 function matchPage(id) {
   const m = S.matches.get(id); const tabs = [["live", t("Registro live")], ["info", t("Dettagli e note")], ["valutazioni", t("Valutazioni")], ["multimedia", t("Multimedia")]];
